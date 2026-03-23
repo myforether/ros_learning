@@ -22,17 +22,22 @@ class MoveCircleActionServer : public rclcpp::Node
         explicit MoveCircleActionServer(const rclcpp::NodeOptions & action_server_options = rclcpp::NodeOptions())
         : Node("action_move_server", action_server_options)                                     // ROS2节点父类初始化
         {
-            using namespace std::placeholders;
-
             this->action_server_ = rclcpp_action::create_server<CustomAction>(                  // 创建动作服务器（接口类型、动作名、回调函数）
                 this->get_node_base_interface(),
                 this->get_node_clock_interface(),
                 this->get_node_logging_interface(),
                 this->get_node_waitables_interface(),
                 "move_circle",
-                std::bind(&MoveCircleActionServer::handle_goal, this, _1, _2),
-                std::bind(&MoveCircleActionServer::handle_cancel, this, _1),
-                std::bind(&MoveCircleActionServer::handle_accepted, this, _1));
+                [this](const rclcpp_action::GoalUUID & uuid,
+                       std::shared_ptr<const CustomAction::Goal> goal) {
+                    return this->handle_goal(uuid, goal);
+                },
+                [this](const std::shared_ptr<GoalHandle> goal_handle) {
+                    return this->handle_cancel(goal_handle);
+                },
+                [this](const std::shared_ptr<GoalHandle> goal_handle) {
+                    return this->handle_accepted(goal_handle);
+                });
         }
 
     private:
@@ -69,9 +74,10 @@ class MoveCircleActionServer : public rclcpp::Node
         // 处理动作接受后具体执行的过程
         void handle_accepted(const std::shared_ptr<GoalHandle> goal_handle_accepted_)          
         {
-            using namespace std::placeholders;
             // 在线程中执行动作过程
-            std::thread{std::bind(&MoveCircleActionServer::execute, this, _1), goal_handle_accepted_}.detach(); 
+            std::thread{[this, goal_handle_accepted_]() {
+                this->execute(goal_handle_accepted_);
+            }}.detach();
         }
 
 

@@ -43,13 +43,19 @@ class MoveCircleActionClient : public rclcpp::Node
 
             // 绑定动作请求、取消、执行的回调函数
             auto send_goal_options = rclcpp_action::Client<CustomAction>::SendGoalOptions();
-            using namespace std::placeholders;
             send_goal_options.goal_response_callback =
-                std::bind(&MoveCircleActionClient::goal_response_callback, this, _1);
+                [this](std::shared_future<GoalHandle::SharedPtr> future) {
+                    this->goal_response_callback(future.get());
+                };
             send_goal_options.feedback_callback =
-                std::bind(&MoveCircleActionClient::feedback_callback, this, _1, _2);
+                [this](GoalHandle::SharedPtr goal_handle,
+                       const std::shared_ptr<const CustomAction::Feedback> feedback) {
+                    this->feedback_callback(goal_handle, feedback);
+                };
             send_goal_options.result_callback =
-                std::bind(&MoveCircleActionClient::result_callback, this, _1);
+                [this](const GoalHandle::WrappedResult & result) {
+                    this->result_callback(result);
+                };
 
             // 创建一个动作目标的消息
             auto goal_msg = CustomAction::Goal();
